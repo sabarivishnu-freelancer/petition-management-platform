@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Analytics - Petition System</title>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container-fluid">
+        <span class="navbar-brand">Petition Analytics</span>
+        <div>
+          <a class="btn btn-light btn-sm me-2" href="/admin">Back to Admin</a>
+          <a class="btn btn-outline-light btn-sm" href="/logout">Logout</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container py-4">
+      <div class="mb-5">
+        <h1 class="page-title">📊 Analytics & Insights</h1>
+        <p class="page-subtitle">Track petition trends, status distribution, and engagement metrics in real-time.</p>
+      </div>
+
+      <!-- Summary Statistics -->
+      <div class="row mb-4 g-3">
+        <div class="col-md-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-label">Total Petitions</div>
+            <div class="stat-value" id="stat-petitions">-</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-label">Total Signatures</div>
+            <div class="stat-value" id="stat-signatures">-</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-label">Active Students</div>
+            <div class="stat-value" id="stat-students">-</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="stat-card">
+            <div class="stat-label">Avg/Petition</div>
+            <div class="stat-value" id="stat-avg">-</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="row mb-4 g-3">
+        <!-- Status Distribution -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: var(--white);">
+              <h5 class="mb-0">Status Distribution 📈</h5>
+            </div>
+            <div class="card-body">
+              <div style="position: relative; height: 300px;">
+                <canvas id="statusChart"></canvas>
+              </div>
+              <div id="status-legend" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--accent-purple), var(--accent-teal)); color: var(--white);">
+              <h5 class="mb-0">Category Breakdown 📂</h5>
+            </div>
+            <div class="card-body">
+              <div style="position: relative; height: 300px;">
+                <canvas id="categoryChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trending Petitions -->
+      <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg, var(--success), #34D399); color: var(--white);">
+          <h5 class="mb-0">🔥 Trending Petitions (Top 10)</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Petition Title</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th class="text-end">Signatures</th>
+                  <th class="text-end">7-Day Growth</th>
+                  <th class="text-end">Trend</th>
+                </tr>
+              </thead>
+              <tbody id="trending-table">
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">Loading analytics...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      let statusChart, categoryChart;
+
+      document.addEventListener('DOMContentLoaded', function() {
+        loadSummaryStats();
+        loadStatusDistribution();
+        loadCategoryBreakdown();
+        loadTrendingPetitions();
+      });
+
+      function loadSummaryStats() {
+        fetch('/api/analytics/summary')
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              document.getElementById('stat-petitions').textContent = data.total_petitions;
+              document.getElementById('stat-signatures').textContent = data.total_signatures;
+              document.getElementById('stat-students').textContent = data.total_students;
+              document.getElementById('stat-avg').textContent = (data.avg_signatures_per_petition || 0).toFixed(1);
+            }
+          })
+          .catch(e => console.error('Error loading summary:', e));
+      }
+
+      function loadStatusDistribution() {
+        fetch('/api/analytics/status-distribution')
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              const dist = data.distribution;
+              const colors = ['#10B981', '#F59E0B', '#EF4444'];
+              const labels = Object.keys(dist);
+              const values = Object.values(dist);
+
+              if (statusChart) statusChart.destroy();
+
+              const ctx = document.getElementById('statusChart').getContext('2d');
+              statusChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    data: values,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom',
+                      labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: { size: 12, weight: 600 }
+                      }
+                    }
+                  }
+                }
+              });
+
+              const legendHtml = labels.map((l, idx) => 
+                `<span class="badge me-2" style="background: ${colors[idx]}; color: white;">
+                  ${l}: ${dist[l]} (${data.percentages[l]}%)
+                </span>`
+              ).join('');
+              document.getElementById('status-legend').innerHTML = legendHtml;
+            }
+          })
+          .catch(e => console.error('Error loading status:', e));
+      }
+
+      function loadCategoryBreakdown() {
+        fetch('/api/analytics/category-breakdown')
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              const categories = data.categories.map(c => c.category || 'Uncategorized');
+              const counts = data.categories.map(c => c.petition_count);
+
+              if (categoryChart) categoryChart.destroy();
+
+              const ctx = document.getElementById('categoryChart').getContext('2d');
+              categoryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: categories,
+                  datasets: [{
+                    label: 'Number of Petitions',
+                    data: counts,
+                    backgroundColor: 'linear-gradient(135deg, #1E40AF, #3B82F6)',
+                    borderColor: '#1E40AF',
+                    borderWidth: 0,
+                    borderRadius: 8
+                  }]
+                },
+                options: {
+                  indexAxis: 'y',
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      display: true,
+                      position: 'bottom'
+                    }
+                  },
+                  scales: {
+                    x: {
+                      beginAtZero: true,
+                      ticks: {
+                        stepSize: 1
+                      }
+                    }
+                  }
+                }
+              });
+            }
+          })
+          .catch(e => console.error('Error loading categories:', e));
+      }
+
+      function loadTrendingPetitions() {
+        fetch('/api/analytics/trending')
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              const tbody = document.getElementById('trending-table');
+              if (data.trending.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No petitions yet</td></tr>';
+                return;
+              }
+
+              tbody.innerHTML = data.trending.map(p => {
+                const statusClass = p.status === 'Approved' ? 'bg-success' : 
+                                    p.status === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark';
+                return `
+                  <tr>
+                    <td>
+                      <strong>${p.title.substring(0, 40)}</strong>${p.title.length > 40 ? '...' : ''}
+                      <br><small class="text-muted">${p.description.substring(0, 60)}...</small>
+                    </td>
+                    <td><span class="badge bg-secondary">${p.category || 'General'}</span></td>
+                    <td>
+                      <span class="badge ${statusClass}">
+                        ${p.status}
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <strong style="color: var(--primary);">${p.signature_count}</strong>
+                    </td>
+                    <td class="text-end">
+                      <span style="color: ${p.week_growth > 0 ? 'var(--success)' : 'var(--gray-500)'}; font-weight: 600;">
+                        ${p.week_growth}
+                      </span>
+                    </td>
+                    <td class="text-end">
+                      <span style="font-size: 1.2rem;">
+                        ${p.week_growth > 0 ? '📈' : '='}
+                      </span>
+                    </td>
+                  </tr>
+                `;
+              }).join('');
+            }
+          })
+          .catch(e => console.error('Error loading trending:', e));
+      }
+
+      setInterval(() => {
+        loadSummaryStats();
+        loadStatusDistribution();
+        loadCategoryBreakdown();
+        loadTrendingPetitions();
+      }, 30000);
+    </script>
+  </body>
+</html>

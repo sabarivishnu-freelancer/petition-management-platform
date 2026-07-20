@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <title>Student Portal - Petition System</title>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container-fluid">
+        <span class="navbar-brand">Student Portal</span>
+        <div>
+          <a class="btn btn-light btn-sm me-2" href="/browse">Browse Petitions</a>
+          <a class="btn btn-outline-light btn-sm" href="/logout">Logout</a>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="container py-4">
+      <div class="row align-items-center mb-4">
+        <div class="col-md-8">
+          <h1 class="page-title">📝 Submit a Petition</h1>
+          <p class="page-subtitle">Share your ideas and create positive change. Start a petition to address issues you care about.</p>
+        </div>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-danger mb-4">{{ error }}</div>
+      {% endif %}
+
+      <div class="row mb-5">
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: var(--white);">
+              <h5 class="mb-0">Create Your Petition</h5>
+            </div>
+            <div class="card-body">
+              <form method="post">
+                <div class="mb-4">
+                  <label for="title" class="form-label">Petition Title <span class="badge bg-danger">Required</span></label>
+                  <input name="title" id="title" class="form-control" placeholder="What change do you want to see?" required autofocus>
+                  <small class="text-muted">Be clear and concise (5-100 characters). Example: 'Request for Permission to Organize Campus Science Fair'</small>
+                </div>
+
+                <div class="mb-4">
+                  <label for="description" class="form-label">Description <span class="badge bg-danger">Required</span></label>
+                  <div class="d-flex gap-2 mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadTemplate('event')">📋 Event Template</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadTemplate('policy')">⚖️ Policy Template</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="loadTemplate('improvement')">🛠️ Improvement Template</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearTemplate()">Clear</button>
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="togglePreview()">👁️ Preview</button>
+                  </div>
+                  <textarea name="description" id="description" class="form-control" placeholder="Provide detailed information about your petition. You can use the templates above or write your own structured description..." rows="10" required></textarea>
+                  <small class="text-muted">
+                    ✓ Supports structured format with sections (Subject:, Details:, etc.)
+                    <br>✓ Use line breaks to organize information
+                    <br>✓ Include relevant details to make your case stronger
+                  </small>
+                </div>
+
+                <!-- Preview Panel -->
+                <div id="preview-panel" class="alert alert-info" style="display: none; margin: 20px 0; border-left: 4px solid var(--primary);">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">📋 Petition Preview</h6>
+                    <button type="button" class="btn btn-sm btn-close" onclick="togglePreview()"></button>
+                  </div>
+                  <div id="preview-content" style="background: white; padding: 15px; border-radius: 6px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.95rem; line-height: 1.6; color: #333;"></div>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary btn-lg">Submit Petition</button>
+                  <button type="reset" class="btn btn-outline-secondary btn-lg">Clear Form</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+          <h2 class="page-title">📋 Your Petitions</h2>
+          {% if petitions %}
+          <div class="row">
+            {% for p in petitions %}
+            <div class="col-md-6 mb-3">
+              <div class="card petition-card priority-{{ p[4]|lower }}">
+                <div class="card-body">
+                  <h5>{{ p[1] }}</h5>
+                  <p class="text-muted mb-3" style="max-height: 80px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; white-space: pre-wrap;">{{ p[2] | replace('\n', '<br>') | safe }}</p>
+                  <button type="button" class="btn btn-sm btn-outline-primary mb-2" data-bs-toggle="modal" data-bs-target="#petitionModal{{ p[0] }}">
+                    👁️ View Details
+                  </button>
+                  <div class="mt-2">
+                    <span class="badge bg-secondary">{{ p[3] }}</span>
+                    <span class="badge {% if p[4] == 'High' %}bg-danger{% elif p[4] == 'Medium' %}bg-warning{% else %}bg-success{% endif %}">
+                      {{ p[4] }} Priority
+                    </span>
+                    <span class="badge {% if p[5] == 'Approved' %}bg-success{% elif p[5] == 'Rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                      {{ p[5] }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Petition Details Modals for Your Petitions -->
+          {% else %}
+          <div class="alert alert-info">
+            <h5>🚀 No Petitions Yet</h5>
+            <p class="mb-0">Start by creating your first petition above to make a difference!</p>
+          </div>
+          {% endif %}
+
+          {% if petitions %}
+          {% for p in petitions %}
+          <div class="modal fade" id="petitionModal{{ p[0] }}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: var(--white);">
+                  <h5 class="modal-title">{{ p[1] }}</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <span class="badge bg-secondary">{{ p[3] }}</span>
+                    <span class="badge {% if p[4] == 'High' %}bg-danger{% elif p[4] == 'Medium' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                      Priority: {{ p[4] }}
+                    </span>
+                    <span class="badge {% if p[5] == 'Approved' %}bg-success{% elif p[5] == 'Rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                      {{ p[5] }}
+                    </span>
+                  </div>
+                  <div class="petition-full-description">
+                    <h6>Petition Description:</h6>
+                    <div style="line-height: 1.8; font-size: 0.95rem; color: var(--gray-700); white-space: pre-wrap; word-wrap: break-word; padding: 15px; background: #5085b9; border-radius: 6px;">{{ p[2] | replace('\n', '<br>') | safe }}</div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Petition submission templates
+      const templates = {
+        event: `Subject: Request for Permission to Organize [Event Name]
+
+Dear [Name of Principal/Dean/Administrator],
+
+I am writing to formally request permission to organize [Event Name], a [type of event, e.g., talent show/seminar] on [Date] from [Start Time] to [End Time] at [Venue].
+
+Purpose:
+The purpose of this event is to [briefly state goal, e.g., provide a platform for student artists/promote environmental awareness]. We believe this event will significantly [benefit, e.g., enhance community spirit/develop student skills].
+
+Event Details:
+• Expected Attendance: [Number]
+• Activities: [Brief list of activities]
+• Budget Required: [Budget amount if applicable]
+
+Safety Measures:
+We will ensure all safety protocols are followed, including:
+• Crowd control measures
+• Cleanliness and hygiene standards
+• Emergency exits and medical assistance availability
+• [Other relevant safety measures]
+
+Attached is a detailed proposal with a tentative schedule for your review.
+
+We look forward to your positive response and support.
+
+Sincerely,
+[Your Name]
+[Your Role/Organization]`,
+
+        policy: `Subject: Proposal for Policy Change - [Policy Name]
+
+Dear [Recipient],
+
+I am writing to request a review and implementation of [specific policy change]. This proposal addresses [problem/issue] that currently affects [who it affects].
+
+Current Situation:
+[Describe the current state and why it needs to change]
+
+Proposed Changes:
+1. [First change]
+2. [Second change]
+3. [Additional changes]
+
+Benefits:
+• [Benefit 1]
+• [Benefit 2]
+• [Benefit 3]
+
+Implementation Plan:
+The proposed changes can be implemented by [timeline] with the following steps:
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+Expected Impact:
+This change will improve [expected outcome] by [specific improvements].
+
+I believe this change is essential for [greater goal] and would greatly appreciate your consideration.
+
+Thank you for your attention to this important matter.
+
+Sincerely,
+[Your Name]`,
+
+        improvement: `Subject: Suggestion for Improvement - [Area of Improvement]
+
+Dear [Recipient],
+
+I would like to propose an improvement to [department/system/facility]. Currently, [describe current issue], which impacts [affected parties].
+
+Problem Statement:
+[Detailed explanation of the problem and its impact]
+
+Proposed Solution:
+[Clear description of the proposed improvement]
+
+How It Works:
+1. [Step 1 of implementation]
+2. [Step 2 of implementation]
+3. [Step 3 of implementation]
+
+Benefits:
+• Efficiency: [How it improves efficiency]
+• Quality: [How it improves quality]
+• User Experience: [How it improves experience]
+• Cost: [Cost implications, if any]
+
+Timeline:
+This improvement can be implemented within [timeframe].
+
+Acceptance Criteria:
+Success would be measured by:
+1. [Metric 1]
+2. [Metric 2]
+3. [Metric 3]
+
+I am confident this will lead to positive outcomes and would welcome discussion about moving forward with this proposal.
+
+Thank you for considering this suggestion.
+
+Best regards,
+[Your Name]`
+      };
+
+      function loadTemplate(templateType) {
+        const description = document.getElementById('description');
+        description.value = templates[templateType] || '';
+        description.focus();
+        // Scroll to description field
+        description.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        updatePreview();
+      }
+
+      function clearTemplate() {
+        document.getElementById('description').value = '';
+        document.getElementById('description').focus();
+        updatePreview();
+      }
+
+      function togglePreview() {
+        const previewPanel = document.getElementById('preview-panel');
+        previewPanel.style.display = previewPanel.style.display === 'none' ? 'block' : 'none';
+        if (previewPanel.style.display === 'block') {
+          updatePreview();
+        }
+      }
+
+      function updatePreview() {
+        const description = document.getElementById('description').value;
+        const previewContent = document.getElementById('preview-content');
+        if (description.trim() === '') {
+          previewContent.textContent = '[Your petition preview will appear here]';
+        } else {
+          previewContent.textContent = description;
+        }
+      }
+
+      // Auto-expand textarea as user types
+      const textarea = document.getElementById('description');
+      if (textarea) {
+        textarea.addEventListener('input', function() {
+          this.style.height = 'auto';
+          this.style.height = Math.min(this.scrollHeight, 500) + 'px';
+          updatePreview();
+        });
+      }
+
+      // ensure preview updates when form is reset (including clicking clear button)
+      const form = document.querySelector('form');
+      if (form) {
+        form.addEventListener('reset', () => {
+          // wait for reset to actually clear fields
+          setTimeout(() => {
+            if (textarea) {
+              textarea.style.height = 'auto';
+            }
+            updatePreview();
+          }, 0);
+        });
+      }
+    </script>
+  </body>
+</html>

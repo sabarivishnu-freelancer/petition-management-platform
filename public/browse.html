@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Petition App - Browse</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+  </head>
+  <body>
+    <nav class="nav-modern">
+      <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-search fa-lg text-white mr-3"></i>
+            <span class="h5 mb-0 text-white font-weight-bold">Browse Petitions</span>
+          </div>
+          <div>
+            <a href="#" id="back" class="nav-link">
+              <i class="fas fa-arrow-left mr-1"></i>Back to Dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid py-5">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <div class="glass-container fade-in-up">
+            <div class="text-center mb-4">
+              <i class="fas fa-bullhorn fa-3x text-primary mb-3"></i>
+              <h3 class="font-weight-bold text-white">Approved Petitions</h3>
+              <p class="text-white-50">Browse and support petitions that matter to you</p>
+            </div>
+            <div id="petitionsContainer" class="row">
+              <!-- Petitions will be loaded here as cards -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+      import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+      import { getDatabase, ref, get, set, runTransaction } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCEVmyr1QvEXFoqQ87MfaEJnq7fShAe5jk",
+        authDomain: "petition-2c9af.firebaseapp.com",
+        databaseURL: "https://petition-2c9af-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "petition-2c9af",
+        storageBucket: "petition-2c9af.firebasestorage.app",
+        messagingSenderId: "622363729755",
+        appId: "1:622363729755:web:a26993e00eb1437b4f447e"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getDatabase(app);
+
+      let userRole = 'student';
+
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = 'index.html';
+          return;
+        }
+        const roleRef = ref(db, 'users/' + user.uid + '/role');
+        const snapshot = await get(roleRef);
+        userRole = snapshot.val() || 'student';
+        loadPetitions();
+      });
+
+      document.getElementById('back').addEventListener('click', () => {
+        if (userRole === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'student.html';
+        }
+      });
+
+      async function loadPetitions() {
+        const petitionsRef = ref(db, 'petitions');
+        const snapshot = await get(petitionsRef);
+        const container = document.getElementById('petitionsContainer');
+        container.innerHTML = '';
+        const user = auth.currentUser;
+
+        const petitions = [];
+        snapshot.forEach((childSnapshot) => {
+          const petition = childSnapshot.val();
+          const id = childSnapshot.key;
+          if (petition.status === 'Approved') {
+            petitions.push({ id, petition });
+          }
+        });
+
+        // Process each petition asynchronously
+        for (const { id, petition } of petitions) {
+          let action = '';
+          if (petition.student_id !== user.uid) {
+            // Check if already signed
+            const sigRef = ref(db, 'signatures/' + id + '/' + user.uid);
+            const sigSnap = await get(sigRef);
+            if (!sigSnap.exists()) {
+              action = `<button class="btn btn-modern-sm btn-primary" onclick="sign('${id}')">
+                <i class="fas fa-pen mr-1"></i>Sign Petition
+              </button>`;
+            } else {
+              action = `<span class="signed-badge">
+                <i class="fas fa-check mr-1"></i>Signed
+              </span>`;
+            }
+          }
+
+          const col = document.createElement('div');
+          col.className = 'col-md-6 mb-4';
+          col.innerHTML = `
+            <div class="petition-card">
+              <div class="petition-header">
+                <h5 class="petition-title">${petition.title}</h5>
+                <span class="status-badge status-approved">Approved</span>
+              </div>
+              <p class="petition-description">${petition.description}</p>
+              <div class="petition-meta">
+                <div class="meta-item">
+                  <i class="fas fa-tag"></i>
+                  <span>${petition.category}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  <span>${petition.priority}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-signature"></i>
+                  <span>${petition.signature_count} signatures</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-calendar"></i>
+                  <span>${new Date(petition.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <div class="petition-actions">
+                ${action}
+              </div>
+            </div>
+          `;
+          container.appendChild(col);
+        }
+      }
+
+      window.sign = async (petitionId) => {
+        const user = auth.currentUser;
+        if (!user) return;
+        try {
+          await set(ref(db, 'signatures/' + petitionId + '/' + user.uid), {
+            timestamp: new Date().toISOString()
+          });
+          const petitionRef = ref(db, 'petitions/' + petitionId + '/signature_count');
+          await runTransaction(petitionRef, (currentCount) => {
+            return (currentCount || 0) + 1;
+          });
+          loadPetitions();
+        } catch (error) {
+          alert(error.message);
+        }
+      };
+    </script>
+  </body>
+</html>

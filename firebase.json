@@ -1,0 +1,14 @@
+{
+  "database": {
+    "rules": "rules.json"
+  },
+  "hosting": {
+    "site": "petition-2c9af",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}

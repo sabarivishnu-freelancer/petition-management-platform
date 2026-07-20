@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <title>Admin Dashboard - Petition System</title>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container-fluid">
+        <span class="navbar-brand">Admin Dashboard</span>
+        <div>
+          <a class="btn btn-light btn-sm me-2" href="/logout">Logout</a>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="container py-4">
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <h1 class="page-title">🎛️ Manage Petitions</h1>
+          <p class="page-subtitle">Review, approve, and manage all petitions in the system.</p>
+        </div>
+      </div>
+
+      <div class="row mb-4 g-3">
+        <div class="col-md-3">
+          <a class="btn btn-primary w-100 btn-lg" href="/analytics">
+            <span style="font-size: 1.5rem;">📊</span><br>
+            View Analytics
+          </a>
+        </div>
+        <div class="col-md-3">
+          <a class="btn btn-success w-100 btn-lg" href="/export/json">
+            <span style="font-size: 1.5rem;">📥</span><br>
+            Download JSON
+          </a>
+        </div>
+        <div class="col-md-3">
+          <a class="btn btn-warning w-100 btn-lg" href="/export/pdf">
+            <span style="font-size: 1.5rem;">📄</span><br>
+            Download PDF
+          </a>
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-info w-100 btn-lg" onclick="location.reload()">
+            <span style="font-size: 1.5rem;">🔄</span><br>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Signatures</th>
+                  <th>Student ID</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in petitions %}
+                <tr>
+                  <td><span class="badge bg-primary">{{ p[0] }}</span></td>
+                  <td><strong>{{ p[1] }}</strong></td>
+                  <td><span class="badge bg-secondary">{{ p[3] }}</span></td>
+                  <td>
+                    <span class="badge {% if p[4] == 'High' %}bg-danger{% elif p[4] == 'Medium' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                      {{ p[4] }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge {% if p[5] == 'Approved' %}bg-success{% elif p[5] == 'Rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                      {{ p[5] }}
+                    </span>
+                  </td>
+                  <td><span class="badge bg-info">{{ p[6] }}</span></td>
+                  <td>{{ p[7] }}</td>
+                  <td><small class="text-muted">{{ p[8]|string }}</small></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#petitionModal{{ p[0] }}" title="View Details">👁️</button>
+                    {% if p[5] != 'Approved' %}
+                    <a class="btn btn-sm btn-success" href="/update/{{p[0]}}/Approved" title="Approve">✓</a>
+                    {% endif %}
+                    {% if p[5] != 'Rejected' %}
+                    <a class="btn btn-sm btn-danger" href="/update/{{p[0]}}/Rejected" title="Reject">✕</a>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="9" class="text-center text-muted py-4">
+                    <p style="font-size: 1.5rem; margin-bottom: 0;">📋 No petitions found</p>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tbody id="trending-table">
+                <!-- trending petitions will be injected here via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Petition Details Modals -->
+      {% for p in petitions %}
+      <div class="modal fade" id="petitionModal{{ p[0] }}" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: var(--white);">
+              <h5 class="modal-title">{{ p[1] }}</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label"><strong>Category</strong></label>
+                    <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">{{ p[3] }}</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label"><strong>Priority</strong></label>
+                    <span class="badge {% if p[4] == 'High' %}bg-danger{% elif p[4] == 'Medium' %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">{{ p[4] }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label"><strong>Status</strong></label>
+                <span class="badge {% if p[5] == 'Approved' %}bg-success{% elif p[5] == 'Rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">{{ p[5] }}</span>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label"><strong>Signatures: {{ p[6] }}</strong></label>
+              </div>
+
+              <hr>
+
+              <div class="petition-full-description">
+                <h6>📋 Petition Description:</h6>
+                <div style="line-height: 1.8; font-size: 0.95rem; color: var(--gray-700); white-space: pre-wrap; word-wrap: break-word;">{{ p[2] | replace('\\n', '<br>') | safe }}</div>
+              </div>
+
+              <hr>
+
+              <div class="row text-muted">
+                <div class="col-md-6">
+                  <small><strong>Submitted by Student ID:</strong> {{ p[7] }}</small><br>
+                  <small><strong>Created:</strong> {{ p[8]|string }}</small>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              {% if p[5] != 'Approved' %}
+              <a href="/update/{{p[0]}}/Approved" class="btn btn-success" onclick="document.querySelector('#petitionModal{{ p[0] }} .btn-close').click();">✓ Approve</a>
+              {% endif %}
+              {% if p[5] != 'Rejected' %}
+              <a href="/update/{{p[0]}}/Rejected" class="btn btn-danger" onclick="document.querySelector('#petitionModal{{ p[0] }} .btn-close').click();">✕ Reject</a>
+              {% endif %}
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Petition App - Student</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+  </head>
+  <body>
+    <nav class="nav-modern">
+      <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-graduation-cap fa-lg text-white mr-3"></i>
+            <span class="h5 mb-0 text-white font-weight-bold">Student Dashboard</span>
+          </div>
+          <div>
+            <a href="#" id="logout" class="nav-link">
+              <i class="fas fa-sign-out-alt mr-1"></i>Logout
+            </a>
+            <a href="browse.html" class="nav-link">
+              <i class="fas fa-search mr-1"></i>Browse Petitions
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid py-5">
+      <div class="row justify-content-center">
+        <div class="col-xl-10">
+          <div class="dashboard-grid">
+            <div class="glass-container dashboard-hero slide-in-left">
+              <div class="d-flex align-items-start justify-content-between flex-wrap">
+                <div class="hero-text">
+                  <span class="tag-pill">Student Portal</span>
+                  <h1 class="font-weight-bold text-dark mb-3">Create petitions that get results</h1>
+                  <p class="text-secondary hero-subtitle">Draft your petition, share it with classmates, and follow its progress from a single dashboard.</p>
+                </div>
+                <div class="hero-stat-card">
+                  <div class="stat-block">
+                    <span class="stat-value" id="totalPetitionsCount">0</span>
+                    <span>Total Petitions</span>
+                  </div>
+                  <div class="stat-block">
+                    <span class="stat-value" id="pendingReviewCount">0</span>
+                    <span>Pending Review</span>
+                  </div>
+                  <div class="stat-block">
+                    <span class="stat-value" id="publishedPetitionsCount">0</span>
+                    <span>Published</span>
+                  </div>
+                </div>
+              </div>
+              <div class="progress-tracker mt-4">
+                <div class="tracker-step active" id="trackerStepDraft">
+                  <span class="step-number">1</span>
+                  <div>
+                    <h6>Draft</h6>
+                    <p>Write your petition and submit it for review.</p>
+                  </div>
+                </div>
+                <div class="tracker-step" id="trackerStepReview">
+                  <span class="step-number">2</span>
+                  <div>
+                    <h6>Review</h6>
+                    <p>Your petition is being evaluated by the admin team.</p>
+                  </div>
+                </div>
+                <div class="tracker-step" id="trackerStepPublished">
+                  <span class="step-number">3</span>
+                  <div>
+                    <h6>Published</h6>
+                    <p>Approved petitions are visible to all students.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-highlights mt-4">
+                <div class="feature-card">
+                  <i class="fas fa-lightbulb"></i>
+                  <div>
+                    <h6>Express clearly</h6>
+                    <p>Use strong language and clear goals to make your message memorable.</p>
+                  </div>
+                </div>
+                <div class="feature-card">
+                  <i class="fas fa-users"></i>
+                  <div>
+                    <h6>Gain support</h6>
+                    <p>Invite peers to sign and help your petition gain momentum fast.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-container form-panel bounce-in">
+              <div class="text-center mb-4">
+                <i class="fas fa-pencil-alt fa-3x text-primary mb-3"></i>
+                <h3 class="font-weight-bold text-dark">Launch a New Petition</h3>
+                <p class="text-secondary">Share your voice and make a difference</p>
+              </div>
+              <form id="petitionForm">
+                <div class="form-group-modern">
+                  <label for="title" class="text-dark">
+                    <i class="fas fa-heading mr-2"></i>Petition Title
+                  </label>
+                  <input type="text" class="form-control-modern" id="title" required placeholder="Enter a compelling title">
+                </div>
+                <div class="form-group-modern">
+                  <label for="description" class="text-dark">
+                    <i class="fas fa-align-left mr-2"></i>Description
+                  </label>
+                  <textarea class="form-control-modern" id="description" rows="5" required placeholder="Describe your petition in detail"></textarea>
+                </div>
+                <button type="submit" class="btn btn-modern btn-block">
+                  <i class="fas fa-rocket mr-2"></i>Publish Petition
+                </button>
+              </form>
+              <div id="error" class="alert alert-danger mt-3" style="display:none;"></div>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <h3 class="font-weight-bold text-dark mb-4">
+              <i class="fas fa-list mr-2"></i>Your Petitions
+            </h3>
+            <div id="petitionsContainer" class="row">
+              <!-- Petitions will be loaded here as cards -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+      import { getAuth, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+      import { getDatabase, ref, push, set, get, query, orderByChild, equalTo } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCEVmyr1QvEXFoqQ87MfaEJnq7fShAe5jk",
+        authDomain: "petition-2c9af.firebaseapp.com",
+        databaseURL: "https://petition-2c9af-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "petition-2c9af",
+        storageBucket: "petition-2c9af.firebasestorage.app",
+        messagingSenderId: "622363729755",
+        appId: "1:622363729755:web:a26993e00eb1437b4f447e"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getDatabase(app);
+      const signatureTarget = 50;
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          window.location.href = 'index.html';
+        }
+      });
+
+      document.getElementById('logout').addEventListener('click', async () => {
+        await signOut(auth);
+        window.location.href = 'index.html';
+      });
+
+      document.getElementById('petitionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const errorBox = document.getElementById('error');
+        if (errorBox) {
+          errorBox.style.display = 'none';
+        }
+        const user = auth.currentUser;
+        if (!user) return;
+        try {
+          const newPetitionRef = push(ref(db, 'petitions'));
+          await set(newPetitionRef, {
+            title: title,
+            description: description,
+            category: 'General',
+            priority: 'Medium',
+            status: 'Pending',
+            signature_count: 0,
+            student_id: user.uid,
+            created_at: new Date().toISOString()
+          });
+          document.getElementById('petitionForm').reset();
+          loadPetitions();
+        } catch (error) {
+          const errorBox = document.getElementById('error');
+          if (errorBox) {
+            errorBox.textContent = error.message;
+            errorBox.style.display = 'block';
+          }
+        }
+      });
+
+      async function loadPetitions() {
+        const user = auth.currentUser;
+        if (!user) return;
+        const petitionsRef = ref(db, 'petitions');
+        const snapshot = await get(petitionsRef);
+        const container = document.getElementById('petitionsContainer');
+        container.innerHTML = '';
+
+        let totalCount = 0;
+        let pendingCount = 0;
+        let publishedCount = 0;
+
+        snapshot.forEach((childSnapshot) => {
+          const petition = childSnapshot.val();
+          if (petition.student_id === user.uid) {
+            const signatureCount = petition.signature_count || 0;
+            totalCount += 1;
+            if (petition.status === 'Pending') pendingCount += 1;
+            if (petition.status === 'Approved') publishedCount += 1;
+
+            const progressPercent = Math.min(100, Math.round((signatureCount / signatureTarget) * 100));
+            const col = document.createElement('div');
+            col.className = 'col-md-6 mb-4';
+            col.innerHTML = `
+              <div class="petition-card">
+                <div class="petition-header">
+                  <h5 class="petition-title">${petition.title}</h5>
+                  <span class="status-badge status-${petition.status.toLowerCase()}">${petition.status}</span>
+                </div>
+                <p class="petition-description">${petition.description}</p>
+                <div class="petition-progress">
+                  <div class="progress-label">
+                    <span>${petition.signature_count} / ${signatureTarget} signatures</span>
+                    <span>${progressPercent}%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" style="width: ${progressPercent}%;"></div>
+                  </div>
+                </div>
+                <div class="petition-meta">
+                  <div class="meta-item">
+                    <i class="fas fa-signature"></i>
+                    <span>${signatureCount} signatures</span>
+                  </div>
+                  <div class="meta-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>${new Date(petition.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+            container.appendChild(col);
+          }
+        });
+
+        document.getElementById('totalPetitionsCount').textContent = totalCount;
+        document.getElementById('pendingReviewCount').textContent = pendingCount;
+        document.getElementById('publishedPetitionsCount').textContent = publishedCount;
+
+        document.getElementById('trackerStepDraft').classList.toggle('active', totalCount > 0 && pendingCount === totalCount);
+        document.getElementById('trackerStepReview').classList.toggle('active', pendingCount > 0 && publishedCount === 0);
+        document.getElementById('trackerStepPublished').classList.toggle('active', publishedCount > 0);
+      }
+
+      loadPetitions();
+    </script>
+  </body>
+</html>

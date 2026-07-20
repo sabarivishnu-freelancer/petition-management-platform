@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Petition App - Login</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+:root {
+  --primary: #0ea5e9;
+  --primary-light: #38bdf8;
+  --primary-dark: #0284c7;
+  --accent-purple: #8b5cf6;
+  --accent-teal: #14b8a6;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --gray-900: #0f172a;
+  --gray-700: #475569;
+  --gray-500: #64748b;
+  --gray-300: #cbd5e1;
+  --gray-100: #f8fafc;
+  --white: #ffffff;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.9rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1.25rem;
+  --spacing-lg: 1.75rem;
+  --spacing-xl: 2.5rem;
+  --shadow-sm: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 20px 45px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 30px 65px rgba(15, 23, 42, 0.12);
+  --glass: rgba(255, 255, 255, 0.16);
+  --glass-border: rgba(255, 255, 255, 0.32);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--gray-900);
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.22), transparent 28%),
+              radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.18), transparent 30%),
+              linear-gradient(135deg, #eff6ff 0%, #f3f4f6 100%);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.container-fluid {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.glass-container {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(18px);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xl);
+}
+
+.nav-modern {
+  background: rgba(255,255,255,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(18px);
+  padding: 1rem 0;
+}
+
+.nav-modern .nav-link {
+  color: var(--white);
+  font-weight: 600;
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+.nav-modern .nav-link:hover {
+  color: var(--primary-light);
+}
+
+h1, h2, h3, h4, h5 {
+  margin: 0;
+}
+
+.text-white-50 {
+  color: rgba(255,255,255,0.72);
+}
+
+.glass-container .text-white {
+  color: var(--gray-900) !important;
+}
+
+.glass-container .text-white-50 {
+  color: var(--gray-600) !important;
+}
+
+.btn-modern {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border: none;
+  border-radius: 999px;
+  color: var(--white);
+  padding: 0.95rem 1.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 18px 40px rgba(14, 165, 233, 0.18);
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 50px rgba(14, 165, 233, 0.24);
+}
+
+.btn-modern-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.65rem 1rem;
+  border: none;
+  font-size: 0.87rem;
+  font-weight: 700;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--success), #34d399);
+  color: var(--white);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger), #fb7185);
+  color: var(--white);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: var(--white);
+}
+
+.form-control-modern,
+.form-control,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 1rem;
+  padding: 0.95rem 1rem;
+  background: rgba(255,255,255,0.92);
+  color: var(--gray-900);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.form-control-modern:focus,
+.form-control:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.15);
+  outline: none;
+}
+
+.form-group-modern {
+  margin-bottom: 1.25rem;
+}
+
+.form-group-modern label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+.form-control-modern::placeholder,
+textarea::placeholder {
+  color: rgba(100, 116, 139, 0.7);
+}
+
+.petition-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.petition-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.petition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.petition-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status-approved {
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+  color: #ffffff;
+}
+
+.status-pending {
+  background: linear-gradient(135deg, #f59e0b, #facc15);
+  color: var(--gray-900);
+}
+
+.status-rejected {
+  background: linear-gradient(135deg, #ef4444, #fb7185);
+  color: #ffffff;
+}
+
+.petition-description {
+  color: var(--gray-700);
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.petition-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  color: var(--gray-600);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.petition-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.signed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #4ade80);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.alert {
+  border-radius: 1rem;
+  border: none;
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.alert-danger,
+.alert-success,
+.alert-warning,
+.alert-info {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.alert-danger {
+  border-left: 4px solid var(--danger);
+}
+
+.alert-success {
+  border-left: 4px solid var(--success);
+}
+
+.alert-warning {
+  border-left: 4px solid var(--warning);
+}
+
+.alert-info {
+  border-left: 4px solid var(--primary);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.7s ease-out;
+}
+
+@media (max-width: 992px) {
+  .petition-meta {
+    grid-template-columns: 1fr;
+  }
+  .nav-modern .nav-link {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .glass-container {
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+  }
+  .petition-card {
+    padding: 1.25rem;
+  }
+  .btn-modern,
+  .btn-modern-sm {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: linear-gradient(135deg, #070c18 0%, #111827 100%);
+    color: var(--gray-100);
+  }
+  .glass-container,
+  .petition-card,
+  .alert {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: rgba(148, 163, 184, 0.16);
+  }
+  .form-control-modern,
+  .form-control,
+  select,
+  textarea {
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--gray-100);
+    border-color: rgba(71, 85, 105, 0.35);
+  }
+  .form-group-modern label,
+  .text-white-50 {
+    color: #cbd5e1;
+  }
+}
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
+      <div class="glass-container fade-in-up">
+        <div class="text-center mb-4">
+          <i class="fas fa-vote-yea fa-3x text-primary mb-3"></i>
+          <h2 class="font-weight-bold text-white">Welcome Back</h2>
+          <p class="text-white-50">Sign in to your petition account</p>
+        </div>
+        <form id="loginForm">
+          <div class="form-group-modern">
+            <label for="username" class="text-white">
+              <i class="fas fa-user mr-2"></i>Username or Email
+            </label>
+            <input type="text" class="form-control-modern" id="username" required placeholder="Enter username or email">
+          </div>
+          <div class="form-group-modern">
+            <label for="password" class="text-white">
+              <i class="fas fa-lock mr-2"></i>Password
+            </label>
+            <input type="password" class="form-control-modern" id="password" required placeholder="Enter password">
+          </div>
+          <button type="submit" class="btn btn-modern btn-block">
+            <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+          </button>
+        </form>
+        <div class="text-center mt-4">
+          <p class="text-white-50 mb-0">Don't have an account?</p>
+          <a href="register.html" class="text-white font-weight-bold">
+            <i class="fas fa-user-plus mr-1"></i>Create Account
+          </a>
+        </div>
+        <div id="error" class="alert alert-danger mt-3" style="display:none;"></div>
+      </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script>
+      const firebaseConfig = {
+        apiKey: "AIzaSyCEVmyr1QvEXFoqQ87MfaEJnq7fShAe5jk",
+        authDomain: "petition-2c9af.firebaseapp.com",
+        databaseURL: "https://petition-2c9af-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "petition-2c9af",
+        storageBucket: "petition-2c9af.firebasestorage.app",
+        messagingSenderId: "622363729755",
+        appId: "1:622363729755:web:a26993e00eb1437b4f447e"
+      };
+
+      const app = firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.database();
+      const errorBox = document.getElementById('error');
+
+      const showError = (message) => {
+        errorBox.textContent = message;
+        errorBox.style.display = 'block';
+      };
+
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorBox.style.display = 'none';
+        if (!navigator.onLine) {
+          showError('No internet connection. Please check your network and try again.');
+          return;
+        }
+
+        const input = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const email = input.includes('@') ? input : input + '@petition.app';
+
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+          const user = auth.currentUser;
+          const roleRef = db.ref('users/' + user.uid + '/role');
+          const snapshot = await roleRef.once('value');
+          const role = snapshot.val() || 'student';
+          if (role === 'admin') {
+            window.location.href = 'admin.html';
+          } else {
+            window.location.href = 'student.html';
+          }
+        } catch (error) {
+          if (error.code === 'auth/network-request-failed') {
+            showError('Unable to connect to Firebase. Check your internet connection and refresh the page.');
+          } else if (error.code === 'auth/user-not-found') {
+            showError('Account not found. Please register first or check your username/email.');
+          } else if (error.code === 'auth/wrong-password') {
+            showError('Password is incorrect. Please try again.');
+          } else {
+            showError(error.message || 'An unexpected sign-in error occurred.');
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
