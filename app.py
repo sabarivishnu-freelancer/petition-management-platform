@@ -1,6 +1,7 @@
 import os
 import io
 import threading
+import secrets
 from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -38,7 +39,33 @@ from firebase_db import (
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
 app = Flask(__name__, static_folder="public/static", template_folder="templates")
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+
+
+def load_secret_key():
+    secret = os.getenv("SECRET_KEY")
+    if secret:
+        return secret
+
+    secret_file = os.path.join(os.path.dirname(__file__), ".secret_key")
+    try:
+        if os.path.exists(secret_file):
+            with open(secret_file, "r", encoding="utf-8") as fh:
+                stored = fh.read().strip()
+            if stored:
+                return stored
+    except Exception as exc:
+        logging.getLogger("petition_app").warning("Unable to read local secret key file: %s", exc)
+
+    secret = secrets.token_urlsafe(32)
+    try:
+        with open(secret_file, "w", encoding="utf-8") as fh:
+            fh.write(secret)
+    except Exception as exc:
+        logging.getLogger("petition_app").warning("Unable to save local secret key file: %s", exc)
+    return secret
+
+
+app.secret_key = load_secret_key()
 
 # Configure logging so stdout/stderr are captured by Render's logs
 logger = logging.getLogger("petition_app")
@@ -173,8 +200,13 @@ def login():
         p = request.form["password"]
         user = get_user_by_username(u)
         if user and check_password_hash(user.get("password", ""), p):
-            session["user_id"] = user["id"]
-            session["role"] = user.get("role", "student")
+            try:
+                session["user_id"] = user["id"]
+                session["role"] = user.get("role", "student")
+            except RuntimeError as exc:
+                if "session is unavailable" in str(exc).lower():
+                    return render_template("login.html", error="Server session secret is missing or invalid. Please contact the administrator."), 500
+                raise
             return redirect("/student" if session["role"] == "student" else "/admin")
         return render_template("login.html", error="Invalid credentials")
     return render_template("login.html")
@@ -380,17 +412,7 @@ def update(petition_id, status):
 
     update_petition_status(petition_id, status)
 
-    if status == "Rejected":
-        def delete_later(pid):
-            try:
-                delete_petition(pid)
-            except Exception:
-                pass
-
-        timer = threading.Timer(120, delete_later, args=(petition_id,))
-        timer.daemon = True
-        timer.start()
-
+    # Keep rejected petitions for audit and expected workflow visibility rather than deleting them.
     student = get_user_by_id(petition.get("student_id"))
     petition_title = petition.get("title", "Your petition")
     if student and student.get("email"):

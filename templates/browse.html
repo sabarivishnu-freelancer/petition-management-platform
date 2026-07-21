@@ -110,7 +110,7 @@
             <div class="modal-footer">
               <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
               {% if p[0] not in signed_ids %}
-              <button type="button" class="btn btn-primary" onclick="signPetition({{ p[0] }}); document.querySelector('#petitionModal{{ p[0] }} .btn-close').click();">
+              <button type="button" class="btn btn-primary" data-petition-id="{{ p[0] }}" onclick="signPetition({{ p[0] }}); document.querySelector('#petitionModal{{ p[0] }} .btn-close').click();">
                 Sign Petition
               </button>
               {% else %}
@@ -129,9 +129,11 @@
       let petitionIds = [{% for p in petitions %}'{{ p[0] }}'{{ "," if not loop.last else "" }}{% endfor %}];
 
       function signPetition(petitionId) {
-        const btn = document.querySelector(`button[data-petition-id="${petitionId}"]`);
-        btn.disabled = true;
-        btn.textContent = "Signing...";
+        const buttons = Array.from(document.querySelectorAll(`button[data-petition-id="${petitionId}"]`));
+        buttons.forEach(btn => {
+          btn.disabled = true;
+          btn.textContent = "Signing...";
+        });
         
         fetch(`/sign/${petitionId}`, {
           method: 'POST',
@@ -139,32 +141,50 @@
             'Content-Type': 'application/json'
           }
         })
-        .then(response => response.json())
+        .then(async response => {
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (err) {
+            // If the response is not JSON, continue to error handling below.
+          }
+
+          if (!response.ok) {
+            const message = (data && data.message) ? data.message : `Sign request failed (${response.status})`;
+            throw new Error(message);
+          }
+
+          return data;
+        })
         .then(data => {
-          if (data.success) {
+          if (data && data.success) {
             document.getElementById(`count-${petitionId}`).textContent = data.signature_count;
-            btn.className = "btn btn-success w-100 btn-sm";
-            btn.innerHTML = "<span>✓ Signed</span>";
-            btn.disabled = true;
-            document.getElementById(`petition-${petitionId}`).classList.add('live-update');
-            
+            buttons.forEach(btn => {
+              btn.className = "btn btn-success w-100 btn-sm";
+              btn.innerHTML = "<span>✓ Signed</span>";
+              btn.disabled = true;
+            });
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = '<strong>Thank you!</strong> You have successfully signed this petition.';
+            document.getElementById('petitions-container').insertBefore(alertDiv, document.getElementById('petitions-container').firstChild);
+
             setTimeout(() => {
-              const alertDiv = document.createElement('div');
-              alertDiv.className = 'alert alert-success alert-dismissible fade show';
-              alertDiv.innerHTML = '<strong>Thank you!</strong> You have successfully signed this petition.';
-              document.getElementById('petitions-container').insertBefore(alertDiv, document.getElementById('petitions-container').firstChild);
-            }, 300);
+              alertDiv.classList.remove('show');
+            }, 3000);
           } else {
-            alert("Error: " + data.message);
-            btn.disabled = false;
-            btn.textContent = "Sign Now";
+            const message = (data && data.message) ? data.message : 'Unable to sign petition. Please try again.';
+            throw new Error(message);
           }
         })
         .catch(error => {
           console.error('Error:', error);
-          alert("An error occurred while signing the petition.");
-          btn.disabled = false;
-          btn.textContent = "Sign Now";
+          alert(error.message || "An error occurred while signing the petition.");
+          buttons.forEach(btn => {
+            btn.disabled = false;
+            btn.textContent = "Sign Now";
+          });
         });
       }
 

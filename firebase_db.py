@@ -45,25 +45,22 @@ def _placeholder():
 
 
 def _connect():
-    if BACKEND == "postgres":
-        if psycopg2 is None:
-            logger.warning("DATABASE_URL is set but psycopg2 is not available; falling back to SQLite")
-        else:
-            try:
-                kwargs = {}
-                if "render" in DATABASE_URL.lower():
-                    kwargs["sslmode"] = "require"
-                conn = psycopg2.connect(DATABASE_URL, **kwargs)
-                conn.autocommit = False
-                return conn
-            except Exception as e:  # pragma: no cover - runtime environment dependent
-                logger.exception("Failed to connect to PostgreSQL (%s); falling back to SQLite: %s", DATABASE_URL, e)
-        # Fallback to sqlite if psycopg2 missing or connection failed
-        logger.info("Using SQLite fallback database at %s", SQLITE_DB_PATH)
-        conn = sqlite3.connect(SQLITE_DB_PATH)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+    global BACKEND
+    if DATABASE_URL and psycopg2 is not None:
+        try:
+            kwargs = {}
+            if "render" in DATABASE_URL.lower():
+                kwargs["sslmode"] = "require"
+            conn = psycopg2.connect(DATABASE_URL, **kwargs)
+            conn.autocommit = False
+            BACKEND = "postgres"
+            return conn
+        except Exception as e:  # pragma: no cover - runtime environment dependent
+            logger.exception("Failed to connect to PostgreSQL (%s); falling back to SQLite: %s", DATABASE_URL, e)
+
+    if DATABASE_URL and psycopg2 is None:
+        logger.warning("DATABASE_URL is set but psycopg2 is not available; falling back to SQLite")
+    BACKEND = "sqlite"
     conn = sqlite3.connect(SQLITE_DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -72,11 +69,6 @@ def _connect():
 
 def _initialize_database():
     global BACKEND
-    if DATABASE_URL and psycopg2 is not None:
-        BACKEND = "postgres"
-    else:
-        BACKEND = "sqlite"
-
     with closing(_connect()) as conn:
         if BACKEND == "postgres":
             with closing(conn.cursor()) as cursor:
@@ -114,6 +106,9 @@ def _initialize_database():
                 """)
                 cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx ON users (lower(email)) WHERE email IS NOT NULL")
                 cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS petitions_title_description_uidx ON petitions (lower(title), lower(description))")
+            with closing(conn.cursor()) as cursor:
+                cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+                cursor.execute("ALTER TABLE petitions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
         else:
             conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -149,10 +144,6 @@ def _initialize_database():
             """)
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx ON users (lower(email))")
             conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS petitions_title_description_uidx ON petitions (lower(title), lower(description))")
-        if BACKEND == "postgres":
-            conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-            conn.execute("ALTER TABLE petitions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-        else:
             existing_users_columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
             if "created_at" not in existing_users_columns:
                 conn.execute("ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
@@ -287,7 +278,7 @@ def create_user(username, password_hash, email, role):
                 conn.commit()
                 return row[0] if row else None
             cursor.execute(
-                "INSERT INTO users (username, password, email, role, created_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO users (username, password, email, role, created_at) VALUES (%s, %s, %s, %s, %s)".replace("%s", _placeholder()),
                 (username.strip(), password_hash, email.strip() if email else None, role, current_timestamp()),
             )
             conn.commit()
@@ -359,7 +350,7 @@ def create_petition(title, description, category, priority, student_id):
                 petition_id = cursor.fetchone()[0]
             else:
                 cursor.execute(
-                    "INSERT INTO petitions (title, description, category, priority, status, signature_count, student_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO petitions (title, description, category, priority, status, signature_count, student_id, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)".replace("%s", _placeholder()),
                     (title.strip(), description, category, priority, "Pending", 0, student_id, current_timestamp()),
                 )
                 petition_id = cursor.lastrowid
@@ -385,10 +376,14 @@ def has_user_signed_petition(user_id, petition_id):
 def record_signature(user_id, petition_id):
     with closing(_connect()) as conn:
         with closing(conn.cursor()) as cursor:
-            cursor.execute(
-                "INSERT INTO signatures (petition_id, user_id, signed_at) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-                (petition_id, user_id, current_timestamp()),
-            )
+            query = "INSERT INTO signatures (petition_id, user_id, signed_at) VALUES (%s, %s, %s)"
+            if BACKEND == "postgres":
+                query += " ON CONFLICT DO NOTHING"
+            else:
+                query = query.replace("%s", _placeholder())
+                query = query.replace("VALUES (?,?,?)", "VALUES (?,?,?)")
+                query = "INSERT OR IGNORE INTO signatures (petition_id, user_id, signed_at) VALUES (?,?,?)"
+            cursor.execute(query, (petition_id, user_id, current_timestamp()))
             conn.commit()
     return current_timestamp()
 
@@ -396,10 +391,10 @@ def record_signature(user_id, petition_id):
 def increment_petition_signature_count(petition_id):
     with closing(_connect()) as conn:
         with closing(conn.cursor()) as cursor:
-            cursor.execute("SELECT signature_count FROM petitions WHERE id = %s", (petition_id,))
+            cursor.execute("SELECT signature_count FROM petitions WHERE id = %s".replace("%s", _placeholder()), (petition_id,))
             row = cursor.fetchone()
             current_count = row[0] if row else 0
-            cursor.execute("UPDATE petitions SET signature_count = %s WHERE id = %s", (current_count + 1, petition_id))
+            cursor.execute("UPDATE petitions SET signature_count = %s WHERE id = %s".replace("%s", _placeholder()), (current_count + 1, petition_id))
             conn.commit()
     return current_count + 1
 
@@ -407,15 +402,15 @@ def increment_petition_signature_count(petition_id):
 def update_petition_status(petition_id, status):
     with closing(_connect()) as conn:
         with closing(conn.cursor()) as cursor:
-            cursor.execute("UPDATE petitions SET status = %s WHERE id = %s", (status, petition_id))
+            cursor.execute("UPDATE petitions SET status = %s WHERE id = %s".replace("%s", _placeholder()), (status, petition_id))
             conn.commit()
 
 
 def delete_petition(petition_id):
     with closing(_connect()) as conn:
         with closing(conn.cursor()) as cursor:
-            cursor.execute("DELETE FROM signatures WHERE petition_id = %s", (petition_id,))
-            cursor.execute("DELETE FROM petitions WHERE id = %s", (petition_id,))
+            cursor.execute("DELETE FROM signatures WHERE petition_id = %s".replace("%s", _placeholder()), (petition_id,))
+            cursor.execute("DELETE FROM petitions WHERE id = %s".replace("%s", _placeholder()), (petition_id,))
             conn.commit()
 
 
