@@ -33,6 +33,7 @@ from firebase_db import (
     delete_petition,
     get_all_users,
     parse_iso_datetime,
+    seed_demo_petition_if_empty,
     get_ref,
 )
 
@@ -531,8 +532,16 @@ def export_pdf():
 @app.route("/browse")
 @login_required(role="student")
 def browse():
+    petitions = get_all_petitions()
+    if not app.testing and not petitions:
+        try:
+            seed_demo_petition_if_empty()
+            petitions = get_all_petitions()
+        except Exception as exc:
+            logger.warning("Failed to seed demo petition: %s", exc)
+
     petitions = sorted(
-        get_all_petitions(),
+        petitions,
         key=lambda p: (p.get("signature_count", 0), p.get("created_at", "")),
         reverse=True,
     )

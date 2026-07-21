@@ -421,6 +421,33 @@ def get_all_users():
     return rows
 
 
+def seed_demo_petition_if_empty():
+    petitions = get_all_petitions()
+    if petitions:
+        return
+
+    default_user = get_user_by_username("demo")
+    if not default_user:
+        default_user = get_user_by_email("demo@example.com")
+    if not default_user:
+        default_user_id = create_user(
+            "demo",
+            generate_password_hash("demo123"),
+            "demo@example.com",
+            "student",
+        )
+    else:
+        default_user_id = int(default_user["id"])
+
+    create_petition(
+        "Extend library hours during exams",
+        "Students request that the campus library remain open until 11pm during final exam weeks to support after-hours study and research.",
+        "Student Life",
+        "High",
+        default_user_id,
+    )
+
+
 def parse_iso_datetime(value):
     if not value:
         return None

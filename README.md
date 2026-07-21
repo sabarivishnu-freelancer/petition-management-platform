@@ -31,6 +31,10 @@ python app.py
 
 Open `http://127.0.0.1:5000`.
 
+## Demo petition
+
+If the database is empty, the app now seeds a demo petition automatically on first access to `/browse`. A demo student user is also created if needed with username `demo` and password `demo123`.
+
 ## Render deployment
 
 Render can deploy this app using the included `render.yaml` file.
