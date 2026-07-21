@@ -1,6 +1,8 @@
 import os
 import hashlib
 import sqlite3
+import logging
+import sys
 from datetime import datetime, timezone
 from contextlib import closing
 from dotenv import load_dotenv
@@ -10,6 +12,13 @@ try:
     import psycopg2
 except Exception:  # pragma: no cover
     psycopg2 = None
+
+logger = logging.getLogger("firebase_db")
+if not logger.handlers:
+    h = logging.StreamHandler(sys.stdout)
+    h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(h)
+    logger.setLevel(logging.INFO)
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), override=False)
 
@@ -38,12 +47,22 @@ def _placeholder():
 def _connect():
     if BACKEND == "postgres":
         if psycopg2 is None:
-            raise RuntimeError("psycopg2-binary is required for PostgreSQL support")
-        kwargs = {}
-        if "render" in DATABASE_URL.lower():
-            kwargs["sslmode"] = "require"
-        conn = psycopg2.connect(DATABASE_URL, **kwargs)
-        conn.autocommit = False
+            logger.warning("DATABASE_URL is set but psycopg2 is not available; falling back to SQLite")
+        else:
+            try:
+                kwargs = {}
+                if "render" in DATABASE_URL.lower():
+                    kwargs["sslmode"] = "require"
+                conn = psycopg2.connect(DATABASE_URL, **kwargs)
+                conn.autocommit = False
+                return conn
+            except Exception as e:  # pragma: no cover - runtime environment dependent
+                logger.exception("Failed to connect to PostgreSQL (%s); falling back to SQLite: %s", DATABASE_URL, e)
+        # Fallback to sqlite if psycopg2 missing or connection failed
+        logger.info("Using SQLite fallback database at %s", SQLITE_DB_PATH)
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
         return conn
     conn = sqlite3.connect(SQLITE_DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -60,40 +79,41 @@ def _initialize_database():
 
     with closing(_connect()) as conn:
         if BACKEND == "postgres":
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                email TEXT,
-                role TEXT NOT NULL CHECK (role IN ('student','admin')),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """)
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS petitions (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL,
-                category TEXT,
-                priority TEXT,
-                status TEXT DEFAULT 'Pending',
-                signature_count INTEGER DEFAULT 0,
-                student_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """)
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS signatures (
-                id SERIAL PRIMARY KEY,
-                petition_id INTEGER NOT NULL REFERENCES petitions(id) ON DELETE CASCADE,
-                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(petition_id, user_id)
-            )
-            """)
-            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx ON users (lower(email)) WHERE email IS NOT NULL")
-            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS petitions_title_description_uidx ON petitions (lower(title), lower(description))")
+            with closing(conn.cursor()) as cursor:
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    email TEXT,
+                    role TEXT NOT NULL CHECK (role IN ('student','admin')),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """)
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS petitions (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    category TEXT,
+                    priority TEXT,
+                    status TEXT DEFAULT 'Pending',
+                    signature_count INTEGER DEFAULT 0,
+                    student_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """)
+                cursor.execute("""
+                CREATE TABLE IF NOT EXISTS signatures (
+                    id SERIAL PRIMARY KEY,
+                    petition_id INTEGER NOT NULL REFERENCES petitions(id) ON DELETE CASCADE,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    signed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(petition_id, user_id)
+                )
+                """)
+                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_uidx ON users (lower(email)) WHERE email IS NOT NULL")
+                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS petitions_title_description_uidx ON petitions (lower(title), lower(description))")
         else:
             conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
