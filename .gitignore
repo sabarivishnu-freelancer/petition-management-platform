@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+petition.sqlite3
+tmp*.sqlite3
+.secret_key
