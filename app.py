@@ -9,6 +9,7 @@ from ai_agent import analyze_petition, find_similar
 from reportlab.pdfgen import canvas
 from mailer import send_email
 from markupsafe import Markup
+import html
 import logging
 import sys
 import traceback
@@ -70,6 +71,31 @@ def handle_exception(e):
     except Exception:
         pass
     return render_template("login.html", error="Internal server error. Try again later."), 500
+
+
+@app.route('/_debug/logs')
+def _debug_logs():
+    """Return the recent last_error.log contents when provided the correct DEBUG_TOKEN.
+
+    Set DEBUG_TOKEN in the deployment environment before using this endpoint.
+    """
+    token = request.args.get('token')
+    cfg = os.getenv('DEBUG_TOKEN')
+    if not cfg:
+        return "Debug endpoint not enabled", 403
+    if not token or token != cfg:
+        return "Forbidden", 403
+    log_path = os.path.join(os.path.dirname(__file__), 'last_error.log')
+    if not os.path.exists(log_path):
+        return "No log found", 404
+    try:
+        with open(log_path, 'r', encoding='utf-8') as fh:
+            content = fh.read()
+        safe = html.escape(content)
+        return f"<pre>{safe}</pre>", 200
+    except Exception as exc:
+        logger.exception('Failed reading last_error.log: %s', exc)
+        return "Error reading log", 500
 
 
 def nl2br(text):
