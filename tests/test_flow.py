@@ -85,3 +85,62 @@ def test_fetch_one_maps_tuple_rows(monkeypatch):
     assert row['id'] == '1'
     assert row['username'] == 'tester'
     assert row['role'] == 'student'
+
+
+def test_fetch_one_maps_name_attr_metadata(monkeypatch):
+    import firebase_db
+
+    class FakeColumn:
+        def __init__(self, name):
+            self.name = name
+
+    class FakeCursor:
+        def __init__(self):
+            self.description = [FakeColumn('id'), FakeColumn('username'), FakeColumn('password'), FakeColumn('email'), FakeColumn('role'), FakeColumn('created_at')]
+            self.query = None
+            self.params = None
+
+        def execute(self, query, params=()):
+            self.query = query
+            self.params = params
+
+        def fetchone(self):
+            return (2, 'alice', 'hash', 'alice@example.com', 'student', '2026-01-02T00:00:00')
+
+        def fetchall(self):
+            return []
+
+        def close(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeConnection:
+        def __init__(self, cursor):
+            self._cursor = cursor
+            self.autocommit = False
+
+        def cursor(self):
+            return self._cursor
+
+        def close(self):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    cursor = FakeCursor()
+    connection = FakeConnection(cursor)
+    monkeypatch.setattr(firebase_db, '_connect', lambda: connection)
+
+    row = firebase_db.get_user_by_username('alice')
+    assert row['id'] == '2'
+    assert row['username'] == 'alice'
+    assert row['role'] == 'student'

@@ -160,6 +160,8 @@ def _row_to_dict(row, description=None):
         for item in description:
             if isinstance(item, (tuple, list)) and item:
                 columns.append(item[0])
+            elif hasattr(item, "name") and getattr(item, "name"):
+                columns.append(item.name)
             elif isinstance(item, str):
                 columns.append(item)
         if columns:
