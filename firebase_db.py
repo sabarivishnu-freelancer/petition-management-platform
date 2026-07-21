@@ -150,11 +150,20 @@ def initialize_database():
 _initialize_database()
 
 
-def _row_to_dict(row):
+def _row_to_dict(row, description=None):
     if row is None:
         return None
     if hasattr(row, "keys"):
         return dict(row)
+    if description:
+        columns = []
+        for item in description:
+            if isinstance(item, (tuple, list)) and item:
+                columns.append(item[0])
+            elif isinstance(item, str):
+                columns.append(item)
+        if columns:
+            return {column: value for column, value in zip(columns, row)}
     return row
 
 
@@ -165,7 +174,7 @@ def _fetch_one(query, params=(), fetch_key=None):
             row = cursor.fetchone()
             if row is None:
                 return None
-            result = _row_to_dict(row)
+            result = _row_to_dict(row, getattr(cursor, "description", None))
             if fetch_key is not None and isinstance(result, dict):
                 return result.get(fetch_key)
             return result
@@ -176,7 +185,8 @@ def _fetch_all(query, params=()):
         with closing(conn.cursor()) as cursor:
             cursor.execute(query.replace("%s", "?" if BACKEND == "sqlite" else "%s"), params)
             rows = cursor.fetchall() or []
-            return [_row_to_dict(row) for row in rows]
+            description = getattr(cursor, "description", None)
+            return [_row_to_dict(row, description) for row in rows]
 
 
 class DbRef:
