@@ -9,6 +9,9 @@ from ai_agent import analyze_petition, find_similar
 from reportlab.pdfgen import canvas
 from mailer import send_email
 from markupsafe import Markup
+import logging
+import sys
+import traceback
 from firebase_db import (
     create_user,
     get_user_by_email,
@@ -35,6 +38,38 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"), overrid
 
 app = Flask(__name__, static_folder="public/static", template_folder="templates")
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+
+# Configure logging so stdout/stderr are captured by Render's logs
+logger = logging.getLogger("petition_app")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    sh.setFormatter(fmt)
+    logger.addHandler(sh)
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log full traceback to stdout (Render captures this in service logs)
+    tb = traceback.format_exc()
+    logger.exception("Unhandled exception: %s", tb)
+    # Also write a local file for quick inspection during debugging
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "last_error.log"), "a", encoding="utf-8") as fh:
+            fh.write("--- %s ---\n" % datetime.utcnow().isoformat())
+            fh.write(tb + "\n")
+    except Exception:
+        logger.exception("Failed to write last_error.log")
+
+    # Return JSON for API requests, otherwise render a friendly error page
+    try:
+        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+            return jsonify({"success": False, "message": "Internal server error"}), 500
+    except Exception:
+        pass
+    return render_template("login.html", error="Internal server error. Try again later."), 500
 
 
 def nl2br(text):
