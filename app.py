@@ -200,7 +200,16 @@ def login():
     if request.method == "POST":
         u = request.form["username"].strip()
         p = request.form["password"]
+
+        admin_user = os.getenv("ADMIN_USER", "").strip()
+        admin_pass = os.getenv("ADMIN_PASS", "").strip()
+        admin_email = os.getenv("ADMIN_EMAIL", "").strip() or None
+
         user = get_user_by_username(u)
+        if not user and u == admin_user and p == admin_pass:
+            created_id = create_user(u, generate_password_hash(p), admin_email, "admin")
+            user = get_user_by_id(created_id) if created_id is not None else None
+
         if user and check_password_hash(user.get("password", ""), p):
             try:
                 session["user_id"] = user["id"]
