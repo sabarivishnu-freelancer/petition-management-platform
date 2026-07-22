@@ -153,8 +153,25 @@ def _initialize_database():
         conn.commit()
 
 
+def ensure_default_admin_user():
+    admin_user = os.getenv("ADMIN_USER", "").strip()
+    admin_pass = os.getenv("ADMIN_PASS", "").strip()
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip()
+
+    if not admin_user or not admin_pass:
+        return None
+
+    existing = get_user_by_username(admin_user)
+    if existing:
+        return existing
+
+    created_id = create_user(admin_user, generate_password_hash(admin_pass), admin_email or None, "admin")
+    return get_user_by_id(created_id) if created_id is not None else None
+
+
 def initialize_database():
     _initialize_database()
+    ensure_default_admin_user()
     return BACKEND
 
 

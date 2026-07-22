@@ -32,6 +32,28 @@ def test_login_and_petition_flow(tmp_path):
     assert petitions[0]['title'] == 'Library Hours'
 
 
+def test_bootstrap_creates_configured_admin(tmp_path, monkeypatch):
+    db_path = tmp_path / 'petition.sqlite3'
+    monkeypatch.setenv('DATABASE_URL', '')
+    monkeypatch.setenv('SQLITE_DB_PATH', str(db_path))
+    monkeypatch.setenv('ADMIN_USER', 'admin')
+    monkeypatch.setenv('ADMIN_PASS', 'secret')
+    monkeypatch.setenv('ADMIN_EMAIL', 'admin@example.com')
+
+    import firebase_db
+    import app as app_module
+
+    firebase_db = importlib.reload(firebase_db)
+    app_module = importlib.reload(app_module)
+
+    firebase_db.initialize_database()
+    user = firebase_db.get_user_by_username('admin')
+
+    assert user is not None
+    assert user['role'] == 'admin'
+    assert app_module.check_password_hash(user['password'], 'secret')
+
+
 def test_fetch_one_maps_tuple_rows(monkeypatch):
     import firebase_db
 
