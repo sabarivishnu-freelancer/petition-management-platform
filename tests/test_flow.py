@@ -79,6 +79,31 @@ def test_login_creates_admin_account_when_configured(tmp_path, monkeypatch):
     assert user['role'] == 'admin'
 
 
+def test_login_uses_default_admin_credentials_when_env_missing(tmp_path, monkeypatch):
+    db_path = tmp_path / 'petition.sqlite3'
+    monkeypatch.setenv('DATABASE_URL', '')
+    monkeypatch.setenv('SQLITE_DB_PATH', str(db_path))
+    monkeypatch.delenv('ADMIN_USER', raising=False)
+    monkeypatch.delenv('ADMIN_PASS', raising=False)
+    monkeypatch.delenv('ADMIN_EMAIL', raising=False)
+
+    import firebase_db
+    import app as app_module
+
+    firebase_db = importlib.reload(firebase_db)
+    app_module = importlib.reload(app_module)
+    firebase_db.initialize_database()
+
+    client = app_module.app.test_client()
+    response = client.post('/', data={'username': 'admin', 'password': 'adminpass'})
+
+    assert response.status_code == 302
+    assert response.headers['Location'] == '/admin'
+    user = firebase_db.get_user_by_username('admin')
+    assert user is not None
+    assert user['role'] == 'admin'
+
+
 def test_fetch_one_maps_tuple_rows(monkeypatch):
     import firebase_db
 

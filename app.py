@@ -201,9 +201,9 @@ def login():
         u = request.form["username"].strip()
         p = request.form["password"]
 
-        admin_user = os.getenv("ADMIN_USER", "").strip()
-        admin_pass = os.getenv("ADMIN_PASS", "").strip()
-        admin_email = os.getenv("ADMIN_EMAIL", "").strip() or None
+        admin_user = os.getenv("ADMIN_USER", "admin").strip()
+        admin_pass = os.getenv("ADMIN_PASS", "adminpass").strip()
+        admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com").strip() or None
 
         user = get_user_by_username(u)
         if not user and u == admin_user and p == admin_pass:
